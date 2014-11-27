@@ -1,0 +1,13 @@
+rc_car=0
+cartox=1
+marker=0
+lane=0
+motor_ki=0.
+motor_kp=0.5
+motor_kd=0.1
+servo_ki=0.
+servo_kp=0.35
+servo_kd=0.2
+motor_speed=10
+img_stream=1
+car_distance=25
