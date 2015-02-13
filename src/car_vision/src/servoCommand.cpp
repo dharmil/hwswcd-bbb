@@ -1,4 +1,6 @@
 #include "servoCommand.h"
+#define CAR_CONTROL_MESSAGE_LENGTH 20
+
 //default constructor servo id to zero
 servoCommand::servoCommand(bool car){
   // Initial servo/motor parameter and communication
@@ -31,6 +33,7 @@ float servoCommand::getServoPosDeg(){
  *    in front
  */
 void servoCommand::move(float distance){
+  char arr[CAR_CONTROL_MESSAGE_LENGTH + 1];
   if(!_cartox){
     // checking if min and max dist is set
     if(_minDist == 0 && _maxDist == 0){
@@ -57,21 +60,68 @@ void servoCommand::move(float distance){
       float radius = MODEL_LENGTH/(cos(90-_degree));
       float velocity_right = (CARTOX_MAX_SPEED * distance / _maxDist) * (1 + MODEL_WIDTH/(2*radius));
       float velocity_left =  (CARTOX_MAX_SPEED * distance / _maxDist) * (1 - MODEL_WIDTH/(2*radius));
+        
+      int velocity_right_int = ((int) velocity_right >= 200) ? 199 : (int) velocity_right;
+      int velocity_left_int = ((int) velocity_left >= 200) ? 199 : (int) velocity_left;
+        
+     /* The max velocity according to the Control Core is 200... so we saturate the greater values to 200. In line following, there is no chance of negative values, but according to the CCarControl Message Spec, it is a legal value. */
       
-      _transferArr[12] = (char)velocity_left; //front left
-      _transferArr[13] = (char)velocity_right; //front right
-      _transferArr[14] = (char)velocity_left; //back left
-      _transferArr[15] = (char)velocity_right; //back right
+      /*_transferArr[12] = 0;
+      _transferArr[13] = (char)(int) velocity_left; //front left
+      _transferArr[13] = 100;
+      _transferArr[14] = 0;
+      _transferArr[15] = (char)(int) velocity_right; //front right
+      _transferArr[15] = 100;
+      _transferArr[16] = 0;
+      _transferArr[17] = (char)(int) velocity_left; //back left
+      _transferArr[17] = 100;
+      _transferArr[18] = 0;
+      _transferArr[19] = (char)(int) velocity_right; //back right
+      _transferArr[19] = 100;*/
+        
+     /* The above block of code, and _transferArr gets corrupted for some reason when it is sent, so we stop using that and manually init a CCarControlMessage in a one liner */
+
+      char arr[CAR_CONTROL_MESSAGE_LENGTH + 1] = {'C', 'A', 'R', 'P', 0x00, 0x01, 0x00, 0x0c, '0', 0x0c, 0x00, 0x00, 0x00, velocity_left_int, 0x00, velocity_left_int, 0x00, velocity_right_int, 0x00, velocity_right_int, '\0'};
     }
     else{
       char vel = (char)CARTOX_MAX_SPEED * distance / _maxDist;
-      _transferArr[12] = vel;
+        
+      /*_transferArr[12] = 0;
       _transferArr[13] = vel;
-      _transferArr[14] = vel;
+      _transferArr[13] = 100;
+      _transferArr[14] = 0;
       _transferArr[15] = vel;
+      _transferArr[15] = 100;
+      _transferArr[16] = 0;
+      _transferArr[17] = vel;
+      _transferArr[17] = 100;
+      _transferArr[18] = 0;
+      _transferArr[19] = vel;
+      _transferArr[19] = 100;*/
+
+      vel = (vel >= 200) ? 199 : vel; //scaling down
+
+      char arr[CAR_CONTROL_MESSAGE_LENGTH + 1] = {'C', 'A', 'R', 'P', 0x00, 0x01, 0x00, 0x0c, '0', 0x0c, 0x00, 0x00, 0x00, vel, 0x00, vel, 0x00, vel, 0x00, vel, '\0'};
     }
-	//std::cout << "array:" << (int)_transferArr[12] << (int)_transferArr[13] << std::endl; 
-    send(_sockHandle, _transferArr, 16, 0);
+
+    //We print the exact values that we send for debugging purposes
+      
+    for(int h = 0; h < CAR_CONTROL_MESSAGE_LENGTH + 1; h++) {
+        printf("%d ", arr[h]);
+    }
+      
+    printf("\nRight side wheel speed = %d\n", arr[19]);
+    printf("Left side wheel speed = %d\n", arr[13]);
+    sleep(1); //sleep for a second; please do not bombard the cyclone board.. as it needs time to process such messages
+      
+    //please do not use strlen(arr) here as there are 0s in the array and thus the len will be 4
+      
+    if( send(_sockHandle, arr, CAR_CONTROL_MESSAGE_LENGTH, 0) < 0)
+    {
+        puts("Send failed\n");
+    }
+      
+    puts("Data Send\n");
   }
 }
 /*

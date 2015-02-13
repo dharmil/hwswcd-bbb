@@ -32,13 +32,14 @@ servoControl::servoControl()
     _transferArr[2] = 'R';
     _transferArr[3] = 'P';
     _transferArr[4] = 0;
-    _transferArr[5] = 0x2;
+    _transferArr[5] = 0x1;
     _transferArr[6] = 0;
     _transferArr[7] = 0x8;
     _transferArr[8] = 0x30;
     _transferArr[9] = 0x8;
     _transferArr[10] = 0;
     _transferArr[11] = 0;
+    _transferArr[20] = '\0';
   }
 
 servoControl::~servoControl(){
@@ -52,6 +53,7 @@ void servoControl::initCartox(){
   /*
    * Socket initialization 
    */
+
   struct sockaddr_in sock_in, remoteSocketInfo;
   struct hostent *hPtr;
   // Create socket
@@ -60,6 +62,8 @@ void servoControl::initCartox(){
     puts("Socket opening Error");
     exit(1);
   }
+
+  printf("this printf is in honour of matthias for finding a really nasty bug\n");
   
   sock_in.sin_family = AF_INET;
   sock_in.sin_addr.s_addr = htonl(IP_LP); // translate long integer to network byte order
@@ -68,7 +72,7 @@ void servoControl::initCartox(){
   if (setsockopt(_sockHandle, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
     perror("setsockopt");
         exit(1);
-        }
+  }
   // bind socket to a local socket adress
   if( bind(_sockHandle, (struct sockaddr *) &sock_in, sizeof(struct sockaddr_in)) < 0)
   {
